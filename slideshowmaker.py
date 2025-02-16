@@ -1,8 +1,9 @@
-import cv2
+
 import os
 import re
 from PIL import Image
-
+import cv2
+cv2.setUseOptimized(True)  # Включаем оптимизацию
 # Получаем имя папки из аргументов
 import sys
 image_folder = sys.argv[1]  # Папка с изображениями передается как аргумент
