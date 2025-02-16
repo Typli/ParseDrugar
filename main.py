@@ -138,5 +138,8 @@ def create_slideshow():
     thread.start()
     return 'Процесс создания слайдшоу запущен.'
 
-if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+if __name__ == "__main__":
+    from flask_socketio import SocketIO
+    socketio = SocketIO(app)
+    socketio.run(app, host="0.0.0.0", port=8080)
+
