@@ -1,91 +1,142 @@
-import subprocess
 import os
 import json
-from datetime import datetime, timedelta
+import logging
+import asyncio
+import threading
+import subprocess
+import multiprocessing
+from flask import Flask, render_template, send_from_directory, request
+from flask_socketio import SocketIO, emit
+from aiogram import Bot, Dispatcher, Router
+from aiogram.types import Message
+from aiogram.enums import ParseMode
+from aiogram.filters import Command
+from aiogram.client.default import DefaultBotProperties
+from aiogram.types import FSInputFile
+
+# Flask app setup
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+# Путь к папке с видео и конфигурации
+VIDEO_FOLDER = 'videos'
+CONFIG_FILE = 'config.json'
+
+# Инициализация бота
+bot = None
+dp = None
+router = Router()  # Создаем роутер для обработки команд
+
+# Обработчики команд
+@router.message(Command("start"))
+async def cmd_start(message: Message):
+    await message.answer("Бот запущен!")
+
+@router.message(Command("help"))
+async def cmd_help(message: Message):
+    await message.answer("Просто отправьте команду /start для старта!")
+
+# Функция для загрузки конфигурации
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return None
+
+# Функция для сохранения конфигурации
+def save_config(api_token, user_id):
+    config = {"api_token": api_token, "user_id": user_id}
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
+
+# Функция для запуска бота
+async def start_bot(api_token, user_id):
+    global bot, dp
+
+    bot = Bot(token=api_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp = Dispatcher()
+    dp.include_router(router)
+
+    logging.basicConfig(level=logging.INFO)
+    await dp.start_polling(bot, skip_updates=True)
+
+# Запуск бота в отдельном процессе
+def run_bot_process(api_token, user_id):
+    asyncio.run(start_bot(api_token, user_id))
+
+def start_bot_in_background(api_token, user_id):
+    bot_process = multiprocessing.Process(target=run_bot_process, args=(api_token, user_id))
+    bot_process.daemon = True  # Завершается при завершении основного процесса
+    bot_process.start()
 
 
-def run_parse_script():
-    """Запускает скрипт для парсинга данных (parse.py)."""
-    print("Запуск скрипта parse.py для парсинга данных...")
-    subprocess.run(['python3', 'parse.py'], check=True)
-    print("Парсинг завершен.")
+# Функция отправки видео пользователю
+# Функция отправки видео пользователю
+async def send_video_to_user(filename):
+    config = load_config()
+    if config:
+        user_id = config.get("user_id")
+        if user_id and os.path.exists(filename):
+            try:
+                async with Bot(token=config["api_token"]) as bot:
+                    video_file = FSInputFile(filename)  # Используем FSInputFile вместо BufferedReader
+                    await bot.send_video(user_id, video=video_file, caption="Ваше слайдшоу готово!")
+            except Exception as e:
+                logging.error(f"Error sending video to user {user_id}: {e}")
 
 
-def get_json_filename():
-    """Получает имя JSON-файла, созданного parse.py."""
-    today_date = datetime.now().strftime("%Y-%m-%d")
-    json_filename = f"movies_data_{today_date}_to_{(datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d')}.json"
-    return json_filename
+# Функция для запуска start.py и отправки логов через SocketIO
+def run_main_script(image_folder):
+    process = subprocess.Popen(['python3', 'start.py', image_folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    for line in process.stdout:
+        socketio.emit('log', {'message': line.strip()})
+
+    process.wait()
+
+    output_video = next((f for f in os.listdir() if f.endswith('.mp4')), None)
+
+    if output_video:
+        socketio.emit('done', {'message': 'Слайдшоу успешно создано!'})
+        socketio.emit('enable_download', {'filename': output_video})
+
+        # Запускаем асинхронную функцию в отдельном asyncio-цикле
+        asyncio.run(send_video_to_user(output_video))
+    else:
+        socketio.emit('done', {'message': 'Ошибка при создании слайдшоу!'})
 
 
-def run_imagemaker_script(json_filename):
-    """Запускает скрипт для создания изображений (imagemaker.py) с использованием созданного JSON-файла."""
-    print(f"Запуск скрипта imagemaker.py с файлом {json_filename}...")
-    subprocess.run(['python3', 'imagemaker.py'], check=True)
-    print("Изображения успешно созданы.")
+# Маршруты Flask
+@app.route('/')
+def index():
+    config = load_config()
+    if not config:
+        return render_template('config_form.html')
+    else:
+        start_bot_in_background(config['api_token'], config['user_id'])
+        return render_template('index.html')
 
+@app.route('/submit_config', methods=['POST'])
+def submit_config():
+    api_token = request.form['api_token']
+    user_id = request.form['user_id']
+    save_config(api_token, user_id)
 
-def get_image_folders(json_filename):
-    """Получает список директорий, созданных imagemaker.py."""
-    with open(json_filename, 'r', encoding='utf-8') as f:
-        all_data = json.load(f)
+    start_bot_in_background(api_token, user_id)
 
-    # Получаем список директорий, соответствующих датам
-    date_dirs = [date.replace("/", "-") for date in all_data.keys()]
-    return date_dirs
+    return render_template('index.html')
 
+@app.route('/download/<filename>')
+def download_file(filename):
+    app.logger.info(f"Скачивание файла: {filename}")
+    return send_from_directory(os.getcwd(), filename, as_attachment=True)
 
-def run_slideshowmaker_script(date_dirs):
-    """Запускает скрипт slideshowmaker.py только для первой папки с изображениями, соответствующей сегодняшней дате."""
-    today_date = datetime.now().strftime("%Y-%m-%d")
+@app.route('/create_slideshow', methods=['POST'])
+def create_slideshow():
+    image_folder = 'images'
+    thread = threading.Thread(target=run_main_script, args=(image_folder,))
+    thread.start()
+    return 'Процесс создания слайдшоу запущен.'
 
-    # Находим первую папку, которая соответствует сегодняшней дате
-    date_dir = next((dir for dir in date_dirs if dir.startswith(today_date)), None)
-
-    if date_dir is None:
-        print(f"Ошибка: Не найдено папки для сегодняшней даты ({today_date})!")
-        return
-
-    print(f"Запуск скрипта slideshowmaker.py для папки {date_dir}...")
-
-    # Используем относительный путь к скрипту
-    script_path = os.path.join(os.getcwd(), "slideshowmaker.py")
-
-    # Путь к папке с изображениями для сегодняшней даты
-    date_folder_path = os.path.join(os.getcwd(), date_dir)
-
-    # Проверяем, существует ли папка с изображениями
-    if not os.path.isdir(date_folder_path):
-        print(f"Ошибка: Папка {date_folder_path} не существует!")
-        return  # Прерываем выполнение, если папка не существует
-
-    try:
-        # Передаем путь к директории с изображениями для сегодняшней даты
-        subprocess.run(['python3', script_path, date_folder_path], check=True)
-        print(f"Слайдшоу для папки {date_dir} успешно создано.")
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode() if e.stderr else "Неизвестная ошибка"
-        print(f"Ошибка при запуске slideshowmaker.py для {date_dir}: {error_msg}")
-
-
-def main():
-    # Шаг 1: Запуск parse.py для парсинга данных
-    run_parse_script()
-
-    # Шаг 2: Получение имени JSON-файла, созданного в parse.py
-    json_filename = get_json_filename()
-
-    # Шаг 3: Запуск imagemaker.py с данным JSON-файлом
-    run_imagemaker_script(json_filename)
-
-    # Шаг 4: Получение директорий изображений, созданных в imagemaker.py
-    date_dirs = get_image_folders(json_filename)
-
-    # Шаг 5: Запуск slideshowmaker.py только для первой папки с сегодняшней датой
-    run_slideshowmaker_script(date_dirs)
-
-    print("Процесс завершен!")
-
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

@@ -11,10 +11,10 @@ socketio = SocketIO(app)
 VIDEO_FOLDER = 'videos'  # В вашем случае, это не используется, так как видео сохраняется в корне
 
 
-# Функция для запуска main.py и отправки логов через SocketIO
+# Функция для запуска start.py и отправки логов через SocketIO
 def run_main_script(image_folder):
-    # Запуск main.py с аргументом для папки с изображениями
-    process = subprocess.Popen(['python3', 'main.py', image_folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # Запуск start.py с аргументом для папки с изображениями
+    process = subprocess.Popen(['python3', 'start.py', image_folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # Чтение логов процесса
     for line in process.stdout:
