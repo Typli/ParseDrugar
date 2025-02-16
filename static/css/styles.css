@@ -1,0 +1,74 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+.container {
+    text-align: center;
+}
+
+#loading {
+    border: 16px solid #f3f3f3;
+    border-top: 16px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 2s linear infinite;
+    margin-top: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+button {
+    padding: 10px 20px;
+    margin: 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    background-color: #ccc;
+}
+
+#log {
+    white-space: pre-wrap;
+    margin-top: 20px;
+    font-family: monospace;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #222;
+    color: white;
+    padding: 10px;
+}
+
+a {
+    color: white;
+    text-decoration: none;
+}
+
+#downloadButton {
+    background-color: #add8e6;  /* Светло-голубой цвет */
+    border: 1px solid #aaa;     /* Светлый контур */
+    color: #000;                /* Черный цвет текста */
+    padding: 10px 20px;         /* Отступы внутри кнопки */
+    text-align: center;         /* Центрирование текста */
+    text-decoration: none;      /* Убираем подчеркивание */
+    display: inline-block;      /* Чтобы кнопка была как элемент */
+    font-size: 16px;            /* Размер шрифта */
+    border-radius: 5px;         /* Закругленные углы */
+    transition: background-color 0.3s ease;  /* Плавное изменение фона */
+}
+
+#downloadButton:hover {
+    background-color: #87cefa;  /* Изменение цвета при наведении */
+    cursor: pointer;           /* Изменение курсора на указатель */
+}

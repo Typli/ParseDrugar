@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Слайдшоу</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Создание слайд-шоу</h1>
+
+        <button id="createButton" onclick="startProcess()">Создать слайд-шоу</button>
+
+        <div id="loading" class="loading-spinner" style="display:none;"></div>
+
+        <div id="log"></div>
+
+        <div id="downloadDiv" style="display:none;">
+            <button id="downloadButton"><a id="downloadLink" href="#">Скачать слайд-шоу</a></button>
+        </div>
+    </div>
+
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('log', function(data) {
+            document.getElementById('log').innerText += data.message + '\n';
+        });
+
+        socket.on('done', function(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('createButton').disabled = false;
+        });
+
+        socket.on('enable_download', function(data) {
+            document.getElementById('downloadDiv').style.display = 'block';
+            document.getElementById('downloadLink').href = '/download/' + data.filename;
+        });
+
+        function startProcess() {
+            document.getElementById('createButton').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('log').innerText = '';
+
+            fetch('/create_slideshow', { method: 'POST' });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конфигурация бота</title>
+</head>
+<body>
+    <h1>Введите данные для Telegram бота</h1>
+    <form action="/submit_config" method="POST">
+        <label for="api_token">API Token:</label><br>
+        <input type="text" id="api_token" name="api_token" required><br><br>
+
+        <label for="user_id">User ID:</label><br>
+        <input type="text" id="user_id" name="user_id" required><br><br>
+
+        <input type="submit" value="Сохранить и запустить">
+    </form>
+</body>
+</html>
