@@ -48,11 +48,11 @@ def run_slideshowmaker_script(date_dirs):
 
     print(f"Запуск скрипта slideshowmaker.py для папки {date_dir}...")
 
-    script_path = "/home/typli/PycharmProjects/ParseDrugar/slideshowmaker.py"  # Путь к скрипту
-    project_dir = "/home/typli/PycharmProjects/ParseDrugar"  # Путь к корню проекта
+    # Используем относительный путь к скрипту
+    script_path = os.path.join(os.getcwd(), "slideshowmaker.py")
 
     # Путь к папке с изображениями для сегодняшней даты
-    date_folder_path = os.path.join(project_dir, date_dir)
+    date_folder_path = os.path.join(os.getcwd(), date_dir)
 
     # Проверяем, существует ли папка с изображениями
     if not os.path.isdir(date_folder_path):

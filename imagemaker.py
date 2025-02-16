@@ -1,4 +1,3 @@
-
 import json
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, timedelta
@@ -12,8 +11,8 @@ json_filename = f"movies_data_{today_date}_to_{(datetime.now() + timedelta(days=
 with open(json_filename, 'r', encoding='utf-8') as f:
     all_data = json.load(f)
 
-# Путь к шрифту
-font_path = "modern_dot_digital-7.ttf"
+# Путь к шрифту (относительный путь)
+font_path = os.path.join(os.getcwd(), "modern_dot_digital-7.ttf")
 
 # Разрешение изображения
 image_width = 2168
